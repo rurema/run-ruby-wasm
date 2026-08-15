@@ -1,0 +1,63 @@
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "空なら artifact のみ、指定するとその名前で Release を作成します"
+        required: false
+        type: string
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: npm install
+
+      - name: Unit tests (pure logic, no network)
+        run: ruby test/test_build.rb
+
+      - name: Build all versions (probes + packs + verifies)
+        run: ruby build.rb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ruby-wasm
+          path: |
+            dist/*.wasm
+            dist/*.manifest.json
+          if-no-files-found: error
+
+      - name: Generate release notes from manifests
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        run: ruby .github/workflows/release_notes.rb dist > release-notes.md
+
+      - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          gh release create "$RELEASE_TAG" dist/*.wasm dist/*.manifest.json \
+            --title "$RELEASE_TAG" \
+            --notes-file release-notes.md

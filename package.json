@@ -1,0 +1,9 @@
+{
+  "name": "run-ruby-wasm",
+  "private": true,
+  "type": "module",
+  "description": "docs.ruby-lang.org RUN button 用の ruby.wasm (bundled gems 追い焼き + スタブ)",
+  "dependencies": {
+    "@ruby/wasm-wasi": "2.9.3-2.9.4"
+  }
+}
