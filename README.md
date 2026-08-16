@@ -142,3 +142,8 @@ Ruby 4.0 は 17 gem を追加して +3.5MiB 程度、Ruby 3.2 はベースに候
   (コンソール) 機能 (`io/console`・`reline`・`irb` など) に依存するものも
   同様に提供できません。
 - Windows 専用の `win32ole` も対象外です。
+
+## ライセンス
+
+[MIT License](LICENSE) (上流の [ruby/ruby.wasm](https://github.com/ruby/ruby.wasm)
+に合わせています)。
