@@ -222,10 +222,22 @@ module RunRubyWasm
     stdout
   end
 
+  # bundle exec 配下で動いているとき、子プロセスに伝播すると挙動を変えて
+  # しまう bundler の環境変数 (RUBYOPT=-rbundler/setup が `gem` CLI にまで
+  # 効いて Gemfile の制約下で動いてしまう等)。gem install の子プロセスでは
+  # 無効化する。bundle exec 外では元から未設定なので無害。
+  BUNDLER_CHILD_ENV = {
+    "RUBYOPT" => nil,
+    "BUNDLE_GEMFILE" => nil,
+    "BUNDLE_BIN_PATH" => nil,
+    "BUNDLE_APP_CONFIG" => nil
+  }.freeze
+
   # `gem install -N --install-dir <dir> name -v version` を実行する。
   def gem_install(install_dir, name, version)
     FileUtils.mkdir_p(install_dir)
     stdout, stderr, status = Open3.capture3(
+      BUNDLER_CHILD_ENV,
       "gem", "install", "-N", "--install-dir", install_dir, name, "-v", version
     )
     raise "gem install #{name} -v #{version} failed:\n#{stdout}\n#{stderr}" unless status.success?

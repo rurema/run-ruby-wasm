@@ -37,8 +37,10 @@ jobs:
       - name: Unit tests (pure logic, no network)
         run: ruby test/test_build.rb
 
+      # bundle exec 経由にすることで、bundler-cache (vendor/bundle) に入った
+      # ruby_wasm gem の rbwasm 実行ファイルが PATH に乗る
       - name: Build all versions (probes + packs + verifies)
-        run: ruby build.rb
+        run: bundle exec ruby build.rb
 
       - uses: actions/upload-artifact@v4
         with:
