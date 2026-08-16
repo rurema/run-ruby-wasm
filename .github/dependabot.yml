@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # GitHub Actions のバージョン更新 (ランナーの Node deprecation 対応を含む)。
+  # 更新 PR でも build workflow (全シリーズの build + verify) が走るので、
+  # CI が緑かどうかでそのままマージ判断できる。
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # ruby_wasm gem (rbwasm) の更新。
+  - package-ecosystem: "bundler"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+# npm (@ruby/wasm-wasi) は意図的に dependabot の対象外:
+# ローダーのバージョンは config.rb の NPM_VERSION、および bitclust 側
+# run-worker.js の pin と一律に揃えて動かす必要があり、ここだけ単独で
+# 上げてはいけない (更新手順は README の「設定の更新」を参照)。
