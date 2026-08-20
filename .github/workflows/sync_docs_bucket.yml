@@ -1,0 +1,50 @@
+# リリースされた ruby.wasm(bundled gems 同梱ビルド)のアセットを
+# docs.ruby-lang.org の S3 バケットへ同期する。RUN ボタンは
+# https://docs.ruby-lang.org/wasm/<タグ>/ruby-<版>.wasm を読み込む
+# (Fastly の VCL が Surrogate-Key: wasm を付けて配信する)。
+#
+# 認証は OIDC(ruby/ruby-infra-recipe cdn/iam.tf の
+# docs-sync-run-ruby-wasm ロール。wasm/* prefix 限定で、main と
+# リリースタグの ref から assume できる)。リポジトリ変数
+# DOCS_SYNC_ROLE_ARN が未設定の間は何もしない。
+name: sync docs bucket
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "同期するリリースタグ(例: 2.9.3-2.9.4-1)"
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: ${{ vars.DOCS_SYNC_ROLE_ARN != '' }}
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir assets
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.DOCS_SYNC_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # Content-Type は明示する(.wasm は自動判定されず、ブラウザの
+      # streaming compile には application/wasm が必須)。リリースの
+      # アセットは不変なので --delete は使わない(過去タグの配下も残す)
+      - name: Upload to s3://docs.r-l.o/wasm/<tag>/
+        run: |
+          aws s3 cp assets "s3://docs.r-l.o/wasm/${TAG}/" --recursive \
+            --exclude "*" --include "*.wasm" --content-type application/wasm --no-progress
+          aws s3 cp assets "s3://docs.r-l.o/wasm/${TAG}/" --recursive \
+            --exclude "*" --include "*.json" --content-type application/json --no-progress
